@@ -9,7 +9,7 @@ public class Parameter {
 	private static final String SOFTWARE_VERSION_NUMBER = "0.1";
 	private static final String FULL_SOFTWARE_NAME= SOFTWARE_NAME+"-"+SOFTWARE_VERSION_NUMBER;
 	private static final String LAST_UPDATE = "2017-5-11";
-    public static final String FOOTER = "\nPlease report issues at https://github.com/huangzhibo/gaeatools/issues";
+    public static final String FOOTER = "\nPlease report issues at https://github.com/huangzhibo/gaeatools/issues\n";
 
 	protected Options options = new Options();
 	protected CommandLine cmdLine;
