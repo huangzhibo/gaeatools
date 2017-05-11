@@ -11,5 +11,16 @@
 
     <artifactId>gaeatools</artifactId>
 
+    <dependencies>
+        <dependency>
+            <groupId>org.bgi.flexlab</groupId>
+            <artifactId>gaeatools-sortvcf</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.bgi.flexlab</groupId>
+            <artifactId>gaeatools-common</artifactId>
+        </dependency>
+    </dependencies>
+
 
 </project>

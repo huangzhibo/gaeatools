@@ -12,7 +12,6 @@
     <artifactId>helloworld</artifactId>
 
     <build>
-    <sourceDirectory>src/main/java</sourceDirectory>
         <plugins>
             <plugin>
                 <artifactId>maven-assembly-plugin</artifactId>

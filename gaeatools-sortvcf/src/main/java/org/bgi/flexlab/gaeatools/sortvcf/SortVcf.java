@@ -19,26 +19,26 @@
 // IN THE SOFTWARE.
 package org.bgi.flexlab.gaeatools.sortvcf;
 
-import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.mapreduce.Job;
-import org.apache.hadoop.mapreduce.RecordWriter;
-import org.apache.hadoop.mapreduce.TaskAttemptContext;
+import org.apache.hadoop.mapreduce.*;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.partition.InputSampler;
+import org.apache.hadoop.mapreduce.lib.partition.TotalOrderPartitioner;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
+import org.bgi.flexlab.gaeatools.common.Parameter;
 import org.seqdoop.hadoop_bam.KeyIgnoringVCFOutputFormat;
 import org.seqdoop.hadoop_bam.VCFInputFormat;
 import org.seqdoop.hadoop_bam.VCFOutputFormat;
 import org.seqdoop.hadoop_bam.VariantContextWritable;
 
 import java.io.IOException;
-import java.util.Iterator;
 
 /**
  * Simple example that reads a VCF file, groups variants by their ID and writes the
@@ -51,13 +51,13 @@ public class SortVcf extends Configured implements Tool {
 
     static class MyVCFOutputFormat
             extends FileOutputFormat<Text, VariantContextWritable> {
-        public static final String INPUT_PATH_PROP = "testvcf.input_path";
+        static final String INPUT_PATH_PROP = "vcf.input_path";
 
         private KeyIgnoringVCFOutputFormat<Text> baseOF;
 
         private void initBaseOF(Configuration conf) {
             if (baseOF == null)
-                baseOF = new KeyIgnoringVCFOutputFormat<Text>(conf);
+                baseOF = new KeyIgnoringVCFOutputFormat<>(conf);
         }
 
         @Override
@@ -78,32 +78,36 @@ public class SortVcf extends Configured implements Tool {
 
     public int run(String[] args) throws Exception {
         final Configuration conf = getConf();
+        SortVcfOptions options = new SortVcfOptions(args);
 
-        conf.set(VCFOutputFormat.OUTPUT_VCF_FORMAT_PROPERTY, "VCF");
-        conf.set(MyVCFOutputFormat.INPUT_PATH_PROP, args[0]);
+        conf.set(VCFOutputFormat.OUTPUT_VCF_FORMAT_PROPERTY, options.getOutputFormat());
+        conf.set(MyVCFOutputFormat.INPUT_PATH_PROP, options.getInput());
 
         Job job = Job.getInstance(conf, "SortVcf");
 
         job.setJarByClass(SortVcf.class);
-        job.setMapperClass (SortVcfMapper.class);
+
+        job.setMapperClass (Mapper.class);
         job.setReducerClass(SortVcfReducer.class);
 
-        job.setMapOutputKeyClass(Text.class);
-        job.setMapOutputValueClass(VariantContextWritable.class);
-        job.setOutputKeyClass(Text.class);
-        job.setOutputValueClass(VariantContextWritable.class);
+        job.setMapOutputKeyClass(LongWritable.class);
+        job.setOutputKeyClass   (NullWritable.class);
+        job.setOutputValueClass (VariantContextWritable.class);
 
-        job.setInputFormatClass(VCFInputFormat.class);
+        job.setInputFormatClass (VCFInputFormat.class);
         job.setOutputFormatClass(MyVCFOutputFormat.class);
 
-        org.apache.hadoop.mapreduce.lib.input.FileInputFormat.addInputPath(job, new Path(args[0]));
+        FileInputFormat.addInputPath  (job, new Path(options.getInput()));
+        FileOutputFormat.setOutputPath(job, new Path(options.getOutput()));
 
-        org.apache.hadoop.mapreduce.lib.output.FileOutputFormat.setOutputPath(job, new Path(args[1]));
+        job.setPartitionerClass(TotalOrderPartitioner.class);
 
-        InputSampler.<LongWritable,VariantContextWritable>writePartitionFile(
+        System.out.println("vcf-sort :: Sampling...");
+
+        InputSampler.writePartitionFile(
                 job,
                 new InputSampler.RandomSampler<LongWritable,VariantContextWritable>
-                        (0.01, 10000, Math.max(100, reduceTasks)));
+                        (0.01, 10000, Math.max(100, options.getReducerNum())));
 
 
         job.submit();
@@ -117,10 +121,6 @@ public class SortVcf extends Configured implements Tool {
     }
 
     public static int instanceMain(String[] args) throws Exception {
-        if (args.length != 2) {
-            System.out.printf("Usage: hadoop jar <name.jar> %s <input.vcf> <output_directory>\n", SortVcf.class.getCanonicalName());
-            System.exit(0);
-        }
         return ToolRunner.run(new Configuration(), new SortVcf(), args);
     }
 
@@ -135,36 +135,18 @@ public class SortVcf extends Configured implements Tool {
     }
 }
 
-final class SortVcfMapper
-        extends org.apache.hadoop.mapreduce.Mapper<LongWritable,VariantContextWritable, Text, VariantContextWritable>
-{
-    @Override protected void map(
-            LongWritable ignored, VariantContextWritable wrec,
-            org.apache.hadoop.mapreduce.Mapper<LongWritable, VariantContextWritable, Text, VariantContextWritable>.Context
-                    ctx)
-            throws InterruptedException, IOException
-    {
-        final VariantContext context = wrec.get();
-        System.out.println(context.toString());
-        ctx.write(new Text(context.getContig()+":" + context.getID()), wrec);
-    }
-}
-
 final class SortVcfReducer
-        extends org.apache.hadoop.mapreduce.Reducer<Text,VariantContextWritable, Text, VariantContextWritable> {
-
-    @Override
-    protected void reduce(
-            Text key, Iterable<VariantContextWritable> records,
-            org.apache.hadoop.mapreduce.Reducer<Text, VariantContextWritable, Text, VariantContextWritable>.Context ctx)
-            throws IOException, InterruptedException {
-
-        final Iterator<VariantContextWritable> it = records.iterator();
-
-        while (it.hasNext()) {
-            VariantContextWritable a = it.next();
-            System.out.println("writing; " + a.get().toString());
-            ctx.write(key, a);
-        }
+        extends Reducer<LongWritable,VariantContextWritable,
+        NullWritable,VariantContextWritable>
+{
+    @Override protected void reduce(
+            LongWritable ignored, Iterable<VariantContextWritable> records,
+            Reducer<LongWritable,VariantContextWritable,
+                    NullWritable,VariantContextWritable>.Context
+                    ctx)
+            throws IOException, InterruptedException
+    {
+        for (VariantContextWritable rec : records)
+            ctx.write(NullWritable.get(), rec);
     }
 }
