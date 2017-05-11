@@ -1,7 +1,6 @@
 package org.bgi.flexlab.gaeatools.sortvcf;
 
 import org.apache.commons.cli.Option;
-import org.bgi.flexlab.gaeatools.Parameter;
 
 /**
  * Created by huangzhibo on 2017/5/11.

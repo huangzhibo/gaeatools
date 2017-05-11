@@ -8,7 +8,7 @@ import org.apache.commons.cli.Options;
 
 public class Parameter {
 
-    private final static  String SOFTWARE_NAME= "gaeatools";
+    private final static  String SOFTWARE_NAME= "org/bgi/flexlab/gaeatools";
 	private final static String SOFTWARE_VERSION_NUMBER = "0.1";
 	private final static String LAST_UPDATE = "2017-5-11";
     private final static String FOOTER = "\nPlease report issues at https://github.com/huangzhibo/gaeatools/issues";

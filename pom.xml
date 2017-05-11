@@ -5,9 +5,14 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.bgi.flexlab</groupId>
-    <artifactId>gaeatools</artifactId>
+    <artifactId>gaeatools-parent</artifactId>
     <version>1.0-SNAPSHOT</version>
-    <packaging>jar</packaging>
+    <modules>
+        <module>gaeatools-main</module>
+        <module>gaeatools-sortvcf</module>
+        <module>helloworld</module>
+    </modules>
+    <packaging>pom</packaging>
 
     <dependencies>
         <dependency>
