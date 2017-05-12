@@ -23,7 +23,8 @@ public class Parameter {
         setCmdLineSyntax("<command>");
     }
 
-	public Parameter(String[] args) {
+	public Parameter(String command, String[] args) {
+	    setCmdLineSyntax(command);
 		parse(args);
 	}
 

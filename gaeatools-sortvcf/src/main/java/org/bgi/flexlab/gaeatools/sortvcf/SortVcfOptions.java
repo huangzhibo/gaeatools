@@ -15,8 +15,7 @@ public class SortVcfOptions extends Parameter {
     private int reducerNum;
 
     SortVcfOptions(String[] args) {
-        super(args);
-        setCmdLineSyntax("SortVcf");
+        super("SortVcf",args);
     }
 
     @Override
@@ -26,23 +25,23 @@ public class SortVcfOptions extends Parameter {
                 .longOpt("input").required(true)
                 .hasArg()
                 .argName("FILE")
-                .desc("Input plain text files. Support multiple files input(example：\"-i file1 -i file2\")")
+                .desc("Input vcf file  [required]")
                 .build());
         options.addOption(Option.builder("o")
                 .longOpt("output").required(true)
                 .hasArg()
                 .argName("FILE")
-                .desc("Output Excel file, multi input will be writed into different sheets in the same workbook. [file1.xlsx]")
+                .desc("Output vcf/bcf file  [required]")
                 .build());
         options.addOption(Option.builder("f")
                 .longOpt("outputFormat")
                 .hasArg()
-                .desc("The format file to set sheet column style.")
+                .desc("The format of output file  [VCF]")
                 .build());
         options.addOption(Option.builder("R")
                 .longOpt("reducerNum")
                 .hasArg()
-                .desc("The format file to set sheet column style.")
+                .desc("hadoop reducer task num [30]")
                 .build());
         options.addOption(Option.builder("h")
                 .longOpt("help")
@@ -67,6 +66,7 @@ public class SortVcfOptions extends Parameter {
     }
 
     String getInput() {
+
         return input;
     }
 

@@ -21,13 +21,13 @@ public class Main {
     private static final String BOLD = "\u001B[1m";
 
     public static void main(String[] args) throws Exception {
-        if (args.length < 2) usage();
+        if (args.length < 1) usage();
 
-        if (args[1].equals("SortVcf")){
+        if (args[0].equals("SortVcf")){
             final String[] mainArgs = Arrays.copyOfRange(args, 1, args.length);
             System.exit(SortVcf.instanceMain(mainArgs));
         }else {
-            System.err.println(RED+"[main] unrecognized command " + args[1] + KNRM);
+            System.err.println(RED+"[main] unrecognized command " + args[0] + KNRM);
             usage();
         }
     }
