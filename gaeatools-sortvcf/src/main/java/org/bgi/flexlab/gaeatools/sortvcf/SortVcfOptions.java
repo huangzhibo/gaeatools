@@ -20,33 +20,27 @@ public class SortVcfOptions extends Parameter {
 
     @Override
     public void parse(String[] args) {
+        Option option;
+        option = new Option("i", "input", true, "Input vcf file  [required]");
+        option.setArgName("FILE");
+        option.setRequired(true);
+        options.addOption(option);
 
-        options.addOption(Option.builder("i")
-                .longOpt("input").required(true)
-                .hasArg()
-                .argName("FILE")
-                .desc("Input vcf file  [required]")
-                .build());
-        options.addOption(Option.builder("o")
-                .longOpt("output").required(true)
-                .hasArg()
-                .argName("FILE")
-                .desc("Output vcf/bcf file  [required]")
-                .build());
-        options.addOption(Option.builder("f")
-                .longOpt("outputFormat")
-                .hasArg()
-                .desc("The format of output file  [VCF]")
-                .build());
-        options.addOption(Option.builder("R")
-                .longOpt("reducerNum")
-                .hasArg()
-                .desc("hadoop reducer task num [30]")
-                .build());
-        options.addOption(Option.builder("h")
-                .longOpt("help")
-                .desc("Print this help.")
-                .build());
+        option = new Option("o", "output", true, "Output vcf/bcf file  [required]");
+        option.setArgName("FILE");
+        option.setRequired(true);
+        options.addOption(option);
+
+        option = new Option("f", "outputFormat", true, "The format of output file (VCF/BCF)  [VCF]");
+        option.setArgName("STRING");
+        options.addOption(option);
+
+        option = new Option("R", "reducerNum", true, "hadoop reducer task num [30]");
+        option.setArgName("INT");
+        options.addOption(option);
+
+        option = new Option("h", "help", false, "Print this help.");
+        options.addOption(option);
 
         try {
             cmdLine = parser.parse(options, args);
@@ -78,7 +72,7 @@ public class SortVcfOptions extends Parameter {
         return outputFormat;
     }
 
-    public int getReducerNum() {
+    int getReducerNum() {
         return reducerNum;
     }
 }

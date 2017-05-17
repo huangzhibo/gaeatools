@@ -11,6 +11,13 @@
 
     <artifactId>helloworld</artifactId>
 
+    <dependencies>
+        <dependency>
+            <groupId>com.github.samtools</groupId>
+            <artifactId>htsjdk</artifactId>
+        </dependency>
+    </dependencies>
+
     <build>
         <plugins>
             <plugin>

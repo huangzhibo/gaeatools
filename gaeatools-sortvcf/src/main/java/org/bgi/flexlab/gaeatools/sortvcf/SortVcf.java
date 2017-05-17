@@ -19,9 +19,16 @@
 // IN THE SOFTWARE.
 package org.bgi.flexlab.gaeatools.sortvcf;
 
+import htsjdk.variant.variantcontext.writer.VariantContextWriter;
+import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
+import htsjdk.variant.vcf.VCFHeader;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
@@ -32,13 +39,17 @@ import org.apache.hadoop.mapreduce.lib.partition.InputSampler;
 import org.apache.hadoop.mapreduce.lib.partition.TotalOrderPartitioner;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
-import org.bgi.flexlab.gaeatools.common.Parameter;
 import org.seqdoop.hadoop_bam.KeyIgnoringVCFOutputFormat;
 import org.seqdoop.hadoop_bam.VCFInputFormat;
 import org.seqdoop.hadoop_bam.VCFOutputFormat;
 import org.seqdoop.hadoop_bam.VariantContextWritable;
 
+import java.io.FilterOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.net.URI;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 /**
  * Simple example that reads a VCF file, groups variants by their ID and writes the
@@ -81,34 +92,45 @@ public class SortVcf extends Configured implements Tool {
         SortVcfOptions options = new SortVcfOptions(args);
 
         conf.set(VCFOutputFormat.OUTPUT_VCF_FORMAT_PROPERTY, options.getOutputFormat());
+//        conf.set(VCFOutputFormat, options.getOutputFormat());
+        conf.setBoolean("hadoopbam.vcf.write-header",false);
         conf.set(MyVCFOutputFormat.INPUT_PATH_PROP, options.getInput());
+
+        final Path inputPath = new Path(options.getInput());
+        KeyIgnoringVCFOutputFormat<Text> baseOF = new KeyIgnoringVCFOutputFormat<>(conf);
+        baseOF.readHeaderFrom(inputPath, inputPath.getFileSystem(conf));
+        VCFHeader vcfHeader = baseOF.getHeader();
 
         Job job = Job.getInstance(conf, "SortVcf");
 
         job.setJarByClass(SortVcf.class);
 
-        job.setMapperClass (Mapper.class);
+        job.setMapperClass(Mapper.class);
         job.setReducerClass(SortVcfReducer.class);
 
         job.setMapOutputKeyClass(LongWritable.class);
-        job.setOutputKeyClass   (NullWritable.class);
-        job.setOutputValueClass (VariantContextWritable.class);
+        job.setOutputKeyClass(NullWritable.class);
+        job.setOutputValueClass(VariantContextWritable.class);
 
-        job.setInputFormatClass (VCFInputFormat.class);
+        job.setInputFormatClass(VCFInputFormat.class);
         job.setOutputFormatClass(MyVCFOutputFormat.class);
-
-        FileInputFormat.addInputPath  (job, new Path(options.getInput()));
-        FileOutputFormat.setOutputPath(job, new Path(options.getOutput()));
-
         job.setPartitionerClass(TotalOrderPartitioner.class);
 
-        System.out.println("vcf-sort :: Sampling...");
+        SimpleDateFormat df = new SimpleDateFormat("yyyyMMddHHmmss");
+        Path partTmp = new Path("/user/" + System.getProperty("user.name") + "/annotmp-" + df.format(new Date()));
+        FileInputFormat.addInputPath(job, inputPath);
+        FileOutputFormat.setOutputPath(job, partTmp);
 
         InputSampler.writePartitionFile(
                 job,
-                new InputSampler.RandomSampler<LongWritable,VariantContextWritable>
-                        (0.01, 10000, Math.max(100, options.getReducerNum())));
+                new InputSampler.RandomSampler<LongWritable, VariantContextWritable>
+                        (0.01, 1000, options.getReducerNum()));
 
+        String partitionFile = TotalOrderPartitioner.getPartitionFile(job.getConfiguration());
+        URI partitionUri = new URI(partitionFile + "#" + TotalOrderPartitioner.DEFAULT_PATH);
+        job.addCacheFile(partitionUri);
+
+        System.out.println("vcf-sort :: Sampling...");
 
         job.submit();
 
@@ -117,9 +139,43 @@ public class SortVcf extends Configured implements Tool {
             return 1;
         }
 
+        Path out = new Path(options.getOutput());
+        final FileSystem dstFS = out.getFileSystem(conf);
+        final FileSystem srcFS = partTmp.getFileSystem(conf);
+        OutputStream os = dstFS.create(out);
+        VariantContextWriterBuilder builder = new VariantContextWriterBuilder();
+        VariantContextWriter writer;
+        if(options.getOutputFormat().equals("BCF")){
+            writer= builder.setOutputBCFStream(
+                    new FilterOutputStream(os) {
+                        @Override public void close() throws IOException {
+                            this.out.flush();
+                        }
+                    }).setOptions(VariantContextWriterBuilder.NO_OPTIONS)
+                    .build();
+        }else {
+            writer = builder.setOutputVCFStream(
+                    new FilterOutputStream(os) {
+                        @Override
+                        public void close() throws IOException {
+                            this.out.flush();
+                        }
+                    }).setOptions(VariantContextWriterBuilder.NO_OPTIONS)
+                    .build();
+        }
+
+        writer.writeHeader(vcfHeader);
+
+        final FileStatus[] parts = partTmp.getFileSystem(conf).globStatus(new Path(partTmp.toString()+"/part-*-[0-9][0-9][0-9][0-9][0-9]"));
+        for (FileStatus p : parts) {
+            final FSDataInputStream ins = srcFS.open(p.getPath());
+            IOUtils.copyBytes(ins, os, conf, false);
+            ins.close();
+        }
+        os.close();
+        partTmp.getFileSystem(conf).delete(partTmp, true);
         return 0;
     }
-
     public static int instanceMain(String[] args) throws Exception {
         return ToolRunner.run(new Configuration(), new SortVcf(), args);
     }

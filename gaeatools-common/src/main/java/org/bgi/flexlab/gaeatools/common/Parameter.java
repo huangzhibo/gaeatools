@@ -2,8 +2,6 @@ package org.bgi.flexlab.gaeatools.common;
 
 import org.apache.commons.cli.*;
 
-import java.io.PrintWriter;
-
 public class Parameter {
 	private static final String SOFTWARE_NAME = "gaeatools";
 	private static final String SOFTWARE_VERSION_NUMBER = "0.1";
@@ -13,8 +11,8 @@ public class Parameter {
 
 	protected Options options = new Options();
 	protected CommandLine cmdLine;
-	public CommandLineParser parser = new DefaultParser();
-    public HelpFormatter helpFormatter = new HelpFormatter();
+	protected CommandLineParser parser = new BasicParser();
+    private HelpFormatter helpFormatter = new HelpFormatter();
 	private String header;
 	private String cmdLineSyntax;
 
@@ -28,7 +26,7 @@ public class Parameter {
 		parse(args);
 	}
 
-    public void printHelp(){
+    protected void printHelp(){
 		helpFormatter.setWidth(2 * HelpFormatter.DEFAULT_WIDTH);
         helpFormatter.printHelp(cmdLineSyntax, header, options, FOOTER, true);
         System.exit(1);
@@ -51,7 +49,7 @@ public class Parameter {
                 "\nLast update: " + LAST_UPDATE;
     }
 
-    public void setCmdLineSyntax(String command) {
+    private void setCmdLineSyntax(String command) {
         cmdLineSyntax = "hadoop jar "+ FULL_SOFTWARE_NAME + ".jar "+ command + " [options]";
     }
 
