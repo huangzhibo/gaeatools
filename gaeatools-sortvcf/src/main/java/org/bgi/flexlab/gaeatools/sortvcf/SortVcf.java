@@ -180,7 +180,6 @@ public class SortVcf extends Configured implements Tool {
         return ToolRunner.run(new Configuration(), new SortVcf(), args);
     }
 
-
     public static void main(String[] args) throws Exception {
         if (args.length != 2) {
             System.out.printf("Usage: hadoop jar <name.jar> %s <input.vcf> <output_directory>\n", SortVcf.class.getCanonicalName());
