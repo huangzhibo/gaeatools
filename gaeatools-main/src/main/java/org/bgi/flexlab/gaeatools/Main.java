@@ -41,7 +41,8 @@ public class Main {
         System.out.println(BOLDRED+cmdLineSyntax+KNRM);
         System.out.println(parameter.getHeader());
         System.out.println(BOLDRED+"\nCommands:"+KNRM);
-        System.out.println(BOLDCYAN+"        SortVcf    sort vcf"+KNRM);
+        System.out.println(BOLDCYAN+"        SortVcf       sort vcf"+KNRM);
+        System.out.println(BOLDCYAN+"        GzUploader    upload gz file to hdfs"+KNRM);
         System.out.println(BOLD+Parameter.FOOTER+KNRM);
         System.exit(1);
     }
