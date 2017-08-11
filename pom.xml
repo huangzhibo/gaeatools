@@ -12,6 +12,7 @@
         <module>gaeatools-sortvcf</module>
         <module>helloworld</module>
         <module>gaeatools-common</module>
+        <module>gaeatools-gzuploader</module>
     </modules>
     <packaging>pom</packaging>
 

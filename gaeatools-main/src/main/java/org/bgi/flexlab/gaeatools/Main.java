@@ -26,6 +26,9 @@ public class Main {
         if (args[0].equals("SortVcf")){
             final String[] mainArgs = Arrays.copyOfRange(args, 1, args.length);
             System.exit(SortVcf.instanceMain(mainArgs));
+        }else if (args[0].equals("GzUploader")){
+            final String[] mainArgs = Arrays.copyOfRange(args, 1, args.length);
+            GzUploader.main(mainArgs);
         }else {
             System.err.println(RED+"[main] unrecognized command " + args[0] + KNRM);
             usage();
