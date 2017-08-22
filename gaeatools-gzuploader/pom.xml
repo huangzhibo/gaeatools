@@ -28,6 +28,10 @@
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-common</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.bgi.flexlab</groupId>
+            <artifactId>gaeatools-common</artifactId>
+        </dependency>
     </dependencies>
 
 

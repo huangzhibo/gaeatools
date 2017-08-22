@@ -32,12 +32,12 @@ public class Parameter {
         System.exit(1);
     }
 
-    public void usage(){
-        helpFormatter.setWidth(2 * HelpFormatter.DEFAULT_WIDTH);
-        helpFormatter.printHelp(cmdLineSyntax, header, options, null, true);
-        System.out.println("    SortVcf      sort vcf");
-        System.out.println(FOOTER);
-    }
+//    public void usage(){
+//        helpFormatter.setWidth(2 * HelpFormatter.DEFAULT_WIDTH);
+//        helpFormatter.printHelp(cmdLineSyntax, header, options, null, true);
+//        System.out.println("    SortVcf      sort vcf");
+//        System.out.println(FOOTER);
+//    }
 
 	public void parse(String[] args) {
 	}

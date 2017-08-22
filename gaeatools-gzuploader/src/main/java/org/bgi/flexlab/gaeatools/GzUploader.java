@@ -1,22 +1,13 @@
 package org.bgi.flexlab.gaeatools;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.IOUtils;
-
-import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.zip.GZIPInputStream;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 
 public class GzUploader {
     /**
@@ -37,6 +28,22 @@ public class GzUploader {
             return false;
     }
 
+    private static String getOutputFileName(String input, String optionOutputName){
+        String filename = "";
+        String outputname = "";
+        File f = new File(input);
+        filename = f.getName();
+
+        if(optionOutputName != null){
+            outputname = optionOutputName;
+        }else if(filename.endsWith(".gz")) {
+            outputname = filename.substring(0, filename.length() - 3);
+        }
+        else
+            outputname = filename;
+        return outputname;
+    }
+
     /**
      * 读取数据源地址信息
      * @throws IOException
@@ -46,26 +53,21 @@ public class GzUploader {
 
         String line;
         while((line = dataListReader.readLine()) != null) {
-
-
+            String[] fields = line.split("\\s+");
             if(!dataSources.containsKey(line)) {
-                String filename = "";
-                File f = new File(line);
-                if(f.exists()) {
-                    filename = f.getName();
-                } else {
-                    System.err.println("file:" + line + " do not exists!");
+                String outputfile = "";
+                if(fields.length == 3 && !fields[2].equalsIgnoreCase("null"))
+                    outputfile = fields[1] + File.separator + fields[2];
+                else if (fields.length == 2 && !fields[1].equalsIgnoreCase("null"))
+                    outputfile = fields[1] + File.separator + getOutputFileName(line, null);
+                else
+                    System.err.println("data.list format is error:" + line + "!")
+                            ;
+                if(!isexists(fields[0])){
+                    System.err.println("file:" + fields[0] + " do not exists!");
                     continue;
                 }
-
-                String outputname = "";
-                if(filename.endsWith(".gz")) {
-                    outputname = filename.substring(0, filename.length() - 3);
-                }
-                else
-                    outputname = filename;
-
-                dataSources.put(line, outputname);
+                dataSources.put(fields[0], outputfile);
             }
         }
         dataListReader.close();
@@ -78,64 +80,32 @@ public class GzUploader {
      */
     public static void main(String args[]) throws Exception {
         // 解析参数
-        if (args.length < 2){
-            System.err.println("> java -jar gzupload.jar data.list(one gz file per line, list file must end with \".list\")|xx.gz  hdfs_path");
-            System.exit(1);
-        }
-        if(isexists(args[0]))
-            if(args[0].endsWith(".list"))
-                readDataList(args[0]);
+        GzUploaderOptions options = new GzUploaderOptions(args);
+
+        if(options.getInput() != null)
+            if(isexists(options.getInput()))
+                if(options.inputIsList())
+                    readDataList(options.getInput());
+                else {
+                    String outputname = getOutputFileName(options.getInput(), options.getOutputName());
+                    dataSources.put(options.getInput(), options.getOutput() + File.separator + outputname);
+                }
             else {
-                String filename = "";
-                String outputname = "";
-
-                File f = new File(args[0]);
-                filename = f.getName();
-
-                if(filename.endsWith(".gz")) {
-                    outputname = filename.substring(0, filename.length() - 3);
-                }
-                else
-                    outputname = filename;
-
-                dataSources.put(args[0], outputname);
+                System.err.println("Data list or input file do not exists, please have a check!");
+                System.exit(2);
             }
-        else {
-            System.err.println("Data list or input file do not exists, please have a check!");
-            System.exit(2);
-        }
-
-
-        if(dataSources.size() != 0) {
-            for(String local : dataSources.keySet()) {
-                System.out.println("upload:" + local + " to " + args[1] + "......");
-                //open gz file reader
-                //BufferedReader localreader = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(loacl))));
-                InputStream loaclin;
-                if(local.endsWith(".gz")) {
-                    loaclin = new BufferedInputStream(new GZIPInputStream(new FileInputStream(local)));
-                } else {
-                    loaclin = new BufferedInputStream(new FileInputStream(local));
-                }
-
-                //open hdfs file writer
-                StringBuffer hdfsPath = new StringBuffer();
-                hdfsPath.append(args[1]);
-                hdfsPath.append(File.separator);
-                hdfsPath.append(dataSources.get(local));
-                Path hdfsout = new Path(hdfsPath.toString());
-
-                Configuration conf = new Configuration();
-                FileSystem fileSystem = FileSystem.get(URI.create(hdfsPath.toString()), conf);
-                //fileSystem.mkdirs(hdfsout);
-                FSDataOutputStream fs = fileSystem.create(hdfsout);
-
-                //读取gz写入hdfs
-                IOUtils.copyBytes(loaclin, fs, conf, true);
-            }
-        } else {
+        if(dataSources.size() == 0) {
             System.err.println("No right Data Sources found!");
             System.exit(3);
         }
+
+        int nThreads = dataSources.size() > 16 ? 16 : dataSources.size();
+        ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(nThreads);
+        for(String local : dataSources.keySet()) {
+            System.out.println("upload:" + local + " to " + dataSources.get(local) + " ......");
+            GzUploaderTask myTask = new GzUploaderTask(local, dataSources.get(local));
+            executor.execute(myTask);
+        }
+        executor.shutdown();
     }
 }
