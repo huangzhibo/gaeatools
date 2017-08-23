@@ -99,7 +99,7 @@ public class GzUploader {
             System.exit(3);
         }
 
-        int nThreads = dataSources.size() > 16 ? 16 : dataSources.size();
+        int nThreads = dataSources.size() > options.getThreadNum() ? options.getThreadNum() : dataSources.size();
         ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(nThreads);
         for(String local : dataSources.keySet()) {
             System.out.println("upload:" + local + " to " + dataSources.get(local) + " ......");
