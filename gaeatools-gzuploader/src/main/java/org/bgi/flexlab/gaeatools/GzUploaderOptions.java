@@ -38,7 +38,7 @@ public class GzUploaderOptions extends Parameter {
         option.setArgName("STRING");
         options.addOption(option);
 
-        option = new Option("t", "thread", true, "thread num (for -l) [32]");
+        option = new Option("t", "thread", true, "thread num (for -l) [24]");
         option.setArgName("INT");
         options.addOption(option);
 
@@ -63,7 +63,7 @@ public class GzUploaderOptions extends Parameter {
 
         outputName = cmdLine.getOptionValue("outputName");
         isList = cmdLine.hasOption("isList");
-        threadNum = Integer.valueOf(cmdLine.getOptionValue("thread", "32"));
+        threadNum = Integer.valueOf(cmdLine.getOptionValue("thread", "24"));
     }
 
     String getInput() {
