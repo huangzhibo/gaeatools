@@ -94,11 +94,16 @@ public class SortVcf extends Configured implements Tool {
         conf.set(VCFOutputFormat.OUTPUT_VCF_FORMAT_PROPERTY, options.getOutputFormat());
 //        conf.set(VCFOutputFormat, options.getOutputFormat());
         conf.setBoolean("hadoopbam.vcf.write-header",false);
-        conf.set(MyVCFOutputFormat.INPUT_PATH_PROP, options.getInput());
 
-        final Path inputPath = new Path(options.getInput());
+        Path inputPath = new Path(options.getInput());
+        FileSystem fs = inputPath.getFileSystem(conf);
+        FileStatus[] files = fs.listStatus(inputPath);
+
+        conf.set(MyVCFOutputFormat.INPUT_PATH_PROP, files[0].getPath().toString());
+
         KeyIgnoringVCFOutputFormat<Text> baseOF = new KeyIgnoringVCFOutputFormat<>(conf);
-        baseOF.readHeaderFrom(inputPath, inputPath.getFileSystem(conf));
+
+        baseOF.readHeaderFrom(files[0].getPath(), inputPath.getFileSystem(conf));
         VCFHeader vcfHeader = baseOF.getHeader();
 
         Job job = Job.getInstance(conf, "SortVcf");
