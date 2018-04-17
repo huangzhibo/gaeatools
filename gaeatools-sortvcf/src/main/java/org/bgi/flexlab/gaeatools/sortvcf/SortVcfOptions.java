@@ -21,7 +21,7 @@ public class SortVcfOptions extends Parameter {
     @Override
     public void parse(String[] args) {
         Option option;
-        option = new Option("i", "input", true, "Input vcf file  [required]");
+        option = new Option("i", "input", true, "Input vcf file or hadoop part dir  [required]");
         option.setArgName("FILE");
         option.setRequired(true);
         options.addOption(option);
