@@ -10,7 +10,7 @@ import org.bgi.flexlab.gaeatools.common.Parameter;
 public class GzUploaderOptions extends Parameter {
 
     private String input;
-    private String output = null;
+    private String output;
     private String outputName;
     private int threadNum;
     private boolean isList;
