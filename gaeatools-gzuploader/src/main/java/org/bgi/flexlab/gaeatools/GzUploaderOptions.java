@@ -10,7 +10,7 @@ import org.bgi.flexlab.gaeatools.common.Parameter;
 public class GzUploaderOptions extends Parameter {
 
     private String input;
-    private String output;
+    private String output = null;
     private String outputName;
     private int threadNum;
     private boolean isList;
@@ -30,7 +30,7 @@ public class GzUploaderOptions extends Parameter {
         option = new Option("l", "isList", false, "Input file is list: (inputfile <output> <outputName>) per line. [false]");
         options.addOption(option);
 
-        option = new Option("o", "output", true, "HDFS path (suppressed by -l) [null]");
+        option = new Option("o", "output", true, "HDFS path [use path in list]");
         option.setArgName("DIR");
         options.addOption(option);
 

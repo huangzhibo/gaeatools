@@ -50,19 +50,39 @@ public class GzUploader {
      */
     private static void readDataList(String dataList) throws IOException{
         BufferedReader dataListReader = new BufferedReader(new FileReader(new File(dataList))); // 读取数据地址文件
-
         String line;
         while((line = dataListReader.readLine()) != null) {
             String[] fields = line.split("\\s+");
-            if(!dataSources.containsKey(line)) {
+            if(!dataSources.containsKey(fields[0])) {
                 String outputfile = "";
                 if(fields.length == 3 && !fields[2].equalsIgnoreCase("null"))
                     outputfile = fields[1] + File.separator + fields[2];
-                else if (fields.length == 2 && !fields[1].equalsIgnoreCase("null"))
-                    outputfile = fields[1] + File.separator + getOutputFileName(line, null);
+                else if (fields.length == 2 || (fields.length == 3 && fields[2].equalsIgnoreCase("null")))
+                    outputfile = fields[1] + File.separator + getOutputFileName(fields[0], null);
                 else
                     System.err.println("data.list format is error:" + line + "!")
                             ;
+                if(!isexists(fields[0])){
+                    System.err.println("file:" + fields[0] + " do not exists!");
+                    continue;
+                }
+                dataSources.put(fields[0], outputfile);
+            }
+        }
+        dataListReader.close();
+    }
+
+    /**
+     * 读取数据源地址信息
+     * @throws IOException
+     */
+    private static void readDataList(String dataList, String output) throws IOException{
+        BufferedReader dataListReader = new BufferedReader(new FileReader(new File(dataList))); // 读取数据地址文件
+        String line;
+        while((line = dataListReader.readLine()) != null) {
+            String[] fields = line.split("\\s+");
+            if(!dataSources.containsKey(fields[0])) {
+                String outputfile = output + File.separator + getOutputFileName(fields[0], null);
                 if(!isexists(fields[0])){
                     System.err.println("file:" + fields[0] + " do not exists!");
                     continue;
@@ -85,7 +105,10 @@ public class GzUploader {
         if(options.getInput() != null)
             if(isexists(options.getInput()))
                 if(options.inputIsList())
-                    readDataList(options.getInput());
+                    if(options.getOutput() != null)
+                        readDataList(options.getInput(), options.getOutput());
+                    else
+                        readDataList(options.getInput());
                 else {
                     String outputname = getOutputFileName(options.getInput(), options.getOutputName());
                     dataSources.put(options.getInput(), options.getOutput() + File.separator + outputname);
