@@ -122,7 +122,7 @@ public class SortVcf extends Configured implements Tool {
         job.setPartitionerClass(TotalOrderPartitioner.class);
 
         SimpleDateFormat df = new SimpleDateFormat("yyyyMMddHHmmss");
-        Path partTmp = new Path("/user/" + System.getProperty("user.name") + "/annotmp-" + df.format(new Date()));
+        Path partTmp = new Path("/user/" + System.getProperty("user.name") + "/vcfsorttmp-" + df.format(new Date()));
         FileInputFormat.addInputPath(job, inputPath);
         FileOutputFormat.setOutputPath(job, partTmp);
 
@@ -131,6 +131,7 @@ public class SortVcf extends Configured implements Tool {
                 new InputSampler.RandomSampler<LongWritable, VariantContextWritable>
                         (0.01, 1000, options.getReducerNum()));
 
+        TotalOrderPartitioner.setPartitionFile(conf, partTmp);
         String partitionFile = TotalOrderPartitioner.getPartitionFile(job.getConfiguration());
         URI partitionUri = new URI(partitionFile + "#" + TotalOrderPartitioner.DEFAULT_PATH);
         job.addCacheFile(partitionUri);
