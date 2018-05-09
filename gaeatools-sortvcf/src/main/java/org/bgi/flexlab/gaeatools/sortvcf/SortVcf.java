@@ -99,6 +99,11 @@ public class SortVcf extends Configured implements Tool {
         FileSystem fs = inputPath.getFileSystem(conf);
         FileStatus[] files = fs.listStatus(inputPath);
 
+        if(files.length <= 0){
+            System.err.println("Input dir is empty!");
+            return 1;
+        }
+
         conf.set(MyVCFOutputFormat.INPUT_PATH_PROP, files[0].getPath().toString());
 
         KeyIgnoringVCFOutputFormat<Text> baseOF = new KeyIgnoringVCFOutputFormat<>(conf);
