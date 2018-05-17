@@ -19,6 +19,7 @@
 // IN THE SOFTWARE.
 package org.bgi.flexlab.gaeatools.sortvcf;
 
+import htsjdk.samtools.util.BlockCompressedOutputStream;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
 import htsjdk.variant.vcf.VCFHeader;
@@ -46,8 +47,6 @@ import org.seqdoop.hadoop_bam.VariantContextWritable;
 
 import java.io.FilterOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.net.URI;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -92,7 +91,6 @@ public class SortVcf extends Configured implements Tool {
         SortVcfOptions options = new SortVcfOptions(args);
 
         conf.set(VCFOutputFormat.OUTPUT_VCF_FORMAT_PROPERTY, options.getOutputFormat());
-//        conf.set(VCFOutputFormat, options.getOutputFormat());
         conf.setBoolean("hadoopbam.vcf.write-header",false);
 
         Path inputPath = new Path(options.getInput());
@@ -127,63 +125,54 @@ public class SortVcf extends Configured implements Tool {
         job.setPartitionerClass(TotalOrderPartitioner.class);
 
         SimpleDateFormat df = new SimpleDateFormat("yyyyMMddHHmmss");
-        Path partTmp = new Path("/user/" + System.getProperty("user.name") + "/vcfsorttmp-" + df.format(new Date()));
+        String tmpDir = "/user/" + System.getProperty("user.name") + "/vcfsorttmp-" + df.format(new Date());
+        Path partTmp = new Path(tmpDir+"/temp");
         FileInputFormat.addInputPath(job, inputPath);
         FileOutputFormat.setOutputPath(job, partTmp);
 
+        Path partitionFile = new Path(tmpDir+"/_partitons.lst");
+        TotalOrderPartitioner.setPartitionFile(job.getConfiguration(), partitionFile);
+
+        System.out.println("vcf-sort :: Sampling...");
+        int reducerNum = options.getReducerNum();
+        int numSamples = options.getNumSamples();
+        if(fs.getContentSummary(inputPath).getLength() < 3000000) {
+            reducerNum = 1;
+            numSamples = 1;
+        }
+        job.setNumReduceTasks(reducerNum);
         InputSampler.writePartitionFile(
                 job,
                 new InputSampler.RandomSampler<LongWritable, VariantContextWritable>
-                        (0.01, 1000, options.getReducerNum()));
-
-        TotalOrderPartitioner.setPartitionFile(conf, partTmp);
-        String partitionFile = TotalOrderPartitioner.getPartitionFile(job.getConfiguration());
-        URI partitionUri = new URI(partitionFile + "#" + TotalOrderPartitioner.DEFAULT_PATH);
-        job.addCacheFile(partitionUri);
-
-        System.out.println("vcf-sort :: Sampling...");
-
-        job.submit();
+                        (0.01, numSamples, reducerNum));
 
         if (!job.waitForCompletion(true)) {
             System.err.println("sort :: Job failed.");
             return 1;
         }
 
-        Path out = new Path(options.getOutput());
-        final FileSystem dstFS = out.getFileSystem(conf);
+        BlockCompressedOutputStream bcos = new BlockCompressedOutputStream(options.getOutput());
         final FileSystem srcFS = partTmp.getFileSystem(conf);
-        OutputStream os = dstFS.create(out);
         VariantContextWriterBuilder builder = new VariantContextWriterBuilder();
         VariantContextWriter writer;
-        if(options.getOutputFormat().equals("BCF")){
-            writer= builder.setOutputBCFStream(
-                    new FilterOutputStream(os) {
-                        @Override public void close() throws IOException {
-                            this.out.flush();
-                        }
-                    }).setOptions(VariantContextWriterBuilder.NO_OPTIONS)
-                    .build();
-        }else {
-            writer = builder.setOutputVCFStream(
-                    new FilterOutputStream(os) {
-                        @Override
-                        public void close() throws IOException {
-                            this.out.flush();
-                        }
-                    }).setOptions(VariantContextWriterBuilder.NO_OPTIONS)
-                    .build();
-        }
+        writer = builder.setOutputVCFStream(
+                new FilterOutputStream(bcos) {
+                    @Override
+                    public void close() throws IOException {
+                        this.out.flush();
+                    }
+                }).setOptions(VariantContextWriterBuilder.NO_OPTIONS)
+                .build();
 
         writer.writeHeader(vcfHeader);
 
         final FileStatus[] parts = partTmp.getFileSystem(conf).globStatus(new Path(partTmp.toString()+"/part-*-[0-9][0-9][0-9][0-9][0-9]"));
         for (FileStatus p : parts) {
             final FSDataInputStream ins = srcFS.open(p.getPath());
-            IOUtils.copyBytes(ins, os, conf, false);
+            IOUtils.copyBytes(ins, bcos, conf, false);
             ins.close();
         }
-        os.close();
+        bcos.close();
         partTmp.getFileSystem(conf).delete(partTmp, true);
         return 0;
     }

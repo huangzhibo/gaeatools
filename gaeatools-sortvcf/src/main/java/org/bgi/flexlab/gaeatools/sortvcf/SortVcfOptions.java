@@ -11,8 +11,9 @@ public class SortVcfOptions extends Parameter {
 
     private String input;
     private String output;
-    private String outputFormat;
+//    private String outputFormat = "VCF";
     private int reducerNum;
+    private int numSamples;
 
     SortVcfOptions(String[] args) {
         super("SortVcf",args);
@@ -26,16 +27,20 @@ public class SortVcfOptions extends Parameter {
         option.setRequired(true);
         options.addOption(option);
 
-        option = new Option("o", "output", true, "Output vcf/bcf file  [required]");
+        option = new Option("o", "output", true, "Output vcf.gz file (must be Local Filesystem) [required]");
         option.setArgName("FILE");
         option.setRequired(true);
         options.addOption(option);
 
-        option = new Option("f", "outputFormat", true, "The format of output file (VCF/BCF)  [VCF]");
-        option.setArgName("STRING");
-        options.addOption(option);
+//        option = new Option("f", "outputFormat", true, "The format of output file (VCF/BCF)  [VCF]");
+//        option.setArgName("STRING");
+//        options.addOption(option);
 
         option = new Option("R", "reducerNum", true, "hadoop reducer task num [30]");
+        option.setArgName("INT");
+        options.addOption(option);
+
+        option = new Option("n", "numSamples", true, "RandomSampler numSamples [1000]");
         option.setArgName("INT");
         options.addOption(option);
 
@@ -55,8 +60,9 @@ public class SortVcfOptions extends Parameter {
             output = cmdLine.getOptionValue("output");
         }
 
-        outputFormat = cmdLine.getOptionValue("outputFormat", "VCF");
+//        outputFormat = cmdLine.getOptionValue("outputFormat", "VCF");
         reducerNum = Integer.parseInt(cmdLine.getOptionValue("reducerNum","30"));
+        numSamples = Integer.parseInt(cmdLine.getOptionValue("numSamples","1000"));
     }
 
     String getInput() {
@@ -65,14 +71,20 @@ public class SortVcfOptions extends Parameter {
     }
 
     String getOutput() {
+        if(output.startsWith("file://"))
+            return output.substring(7);
         return output;
     }
 
     String getOutputFormat() {
-        return outputFormat;
+        return "VCF";
     }
 
     int getReducerNum() {
         return reducerNum;
+    }
+
+    public int getNumSamples() {
+        return numSamples;
     }
 }
