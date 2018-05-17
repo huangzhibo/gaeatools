@@ -71,8 +71,6 @@ public class SortVcfOptions extends Parameter {
     }
 
     String getOutput() {
-        if(output.startsWith("file://"))
-            return output.substring(7);
         return output;
     }
 

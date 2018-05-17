@@ -6,7 +6,7 @@
 
     <groupId>org.bgi.flexlab</groupId>
     <artifactId>gaeatools-parent</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.2</version>
     <modules>
         <module>gaeatools-main</module>
         <module>gaeatools-sortvcf</module>

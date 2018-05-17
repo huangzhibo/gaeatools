@@ -4,9 +4,9 @@ import org.apache.commons.cli.*;
 
 public class Parameter {
 	private static final String SOFTWARE_NAME = "gaeatools";
-	private static final String SOFTWARE_VERSION_NUMBER = "0.2";
+	private static final String SOFTWARE_VERSION_NUMBER = "1.2";
 	private static final String FULL_SOFTWARE_NAME= SOFTWARE_NAME+"-"+SOFTWARE_VERSION_NUMBER;
-	private static final String LAST_UPDATE = "2018-4-17";
+	private static final String LAST_UPDATE = "2018-5-17";
     public static final String FOOTER = "\nPlease report issues at https://github.com/huangzhibo/gaeatools/issues\n";
 
 	protected Options options = new Options();

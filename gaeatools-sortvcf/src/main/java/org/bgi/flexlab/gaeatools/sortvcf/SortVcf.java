@@ -19,7 +19,7 @@
 // IN THE SOFTWARE.
 package org.bgi.flexlab.gaeatools.sortvcf;
 
-import htsjdk.samtools.util.BlockCompressedOutputStream;
+import htsjdk.samtools.util.BlockCompressedStreamConstants;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
 import htsjdk.variant.vcf.VCFHeader;
@@ -44,9 +44,11 @@ import org.seqdoop.hadoop_bam.KeyIgnoringVCFOutputFormat;
 import org.seqdoop.hadoop_bam.VCFInputFormat;
 import org.seqdoop.hadoop_bam.VCFOutputFormat;
 import org.seqdoop.hadoop_bam.VariantContextWritable;
+import org.seqdoop.hadoop_bam.util.BGZFCodec;
 
 import java.io.FilterOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -82,7 +84,8 @@ public class SortVcf extends Configured implements Tool {
                 baseOF.readHeaderFrom(p, p.getFileSystem(conf));
             }
 
-            return baseOF.getRecordWriter(context, getDefaultWorkFile(context, ""));
+//            return baseOF.getRecordWriter(context, getDefaultWorkFile(context, ""));
+            return baseOF.getRecordWriter(context);
         }
     }
 
@@ -103,6 +106,7 @@ public class SortVcf extends Configured implements Tool {
         }
 
         conf.set(MyVCFOutputFormat.INPUT_PATH_PROP, files[0].getPath().toString());
+        conf.set("io.compression.codecs", BGZFCodec.class.getCanonicalName());
 
         KeyIgnoringVCFOutputFormat<Text> baseOF = new KeyIgnoringVCFOutputFormat<>(conf);
 
@@ -129,6 +133,8 @@ public class SortVcf extends Configured implements Tool {
         Path partTmp = new Path(tmpDir+"/temp");
         FileInputFormat.addInputPath(job, inputPath);
         FileOutputFormat.setOutputPath(job, partTmp);
+        FileOutputFormat.setCompressOutput(job, true);
+        FileOutputFormat.setOutputCompressorClass(job, BGZFCodec.class);
 
         Path partitionFile = new Path(tmpDir+"/_partitons.lst");
         TotalOrderPartitioner.setPartitionFile(job.getConfiguration(), partitionFile);
@@ -151,12 +157,14 @@ public class SortVcf extends Configured implements Tool {
             return 1;
         }
 
-        BlockCompressedOutputStream bcos = new BlockCompressedOutputStream(options.getOutput());
         final FileSystem srcFS = partTmp.getFileSystem(conf);
+        Path headerPath = new Path(tmpDir+"/header.vcf.gz");
+        BGZFCodec bgzfCodec = new BGZFCodec();
+        OutputStream os = bgzfCodec.createOutputStream(srcFS.create(headerPath));
         VariantContextWriterBuilder builder = new VariantContextWriterBuilder();
         VariantContextWriter writer;
         writer = builder.setOutputVCFStream(
-                new FilterOutputStream(bcos) {
+                new FilterOutputStream(os) {
                     @Override
                     public void close() throws IOException {
                         this.out.flush();
@@ -165,14 +173,23 @@ public class SortVcf extends Configured implements Tool {
                 .build();
 
         writer.writeHeader(vcfHeader);
+        os.close();
 
-        final FileStatus[] parts = partTmp.getFileSystem(conf).globStatus(new Path(partTmp.toString()+"/part-*-[0-9][0-9][0-9][0-9][0-9]"));
+        Path outputPath = new Path(options.getOutput());
+        final FileSystem dstFS = outputPath.getFileSystem(conf);
+        OutputStream vcfgz = dstFS.create(outputPath);
+        final FSDataInputStream headerIns = srcFS.open(headerPath);
+        IOUtils.copyBytes(headerIns, vcfgz, conf, false);
+        headerIns.close();
+
+        final FileStatus[] parts = partTmp.getFileSystem(conf).globStatus(new Path(partTmp.toString()+"/part-*-[0-9][0-9][0-9][0-9][0-9]*"));
         for (FileStatus p : parts) {
             final FSDataInputStream ins = srcFS.open(p.getPath());
-            IOUtils.copyBytes(ins, bcos, conf, false);
+            IOUtils.copyBytes(ins, vcfgz, conf, false);
             ins.close();
         }
-        bcos.close();
+        vcfgz.write(BlockCompressedStreamConstants.EMPTY_GZIP_BLOCK);
+        vcfgz.close();
         partTmp.getFileSystem(conf).delete(partTmp, true);
         return 0;
     }
