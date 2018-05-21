@@ -11,6 +11,7 @@ public class SortVcfOptions extends Parameter {
 
     private String input;
     private String output;
+    private String vcfHeader;
 //    private String outputFormat = "VCF";
     private int reducerNum;
     private int numSamples;
@@ -27,9 +28,13 @@ public class SortVcfOptions extends Parameter {
         option.setRequired(true);
         options.addOption(option);
 
-        option = new Option("o", "output", true, "Output vcf.gz file (must be Local Filesystem) [required]");
+        option = new Option("o", "output", true, "Output vcf.gz file [required]");
         option.setArgName("FILE");
         option.setRequired(true);
+        options.addOption(option);
+
+        option = new Option("r", "reheader", true, "The header.vcf to use instead of the old header (or add header) [null]");
+        option.setArgName("FILE");
         options.addOption(option);
 
 //        option = new Option("f", "outputFormat", true, "The format of output file (VCF/BCF)  [VCF]");
@@ -60,6 +65,10 @@ public class SortVcfOptions extends Parameter {
             output = cmdLine.getOptionValue("output");
         }
 
+        if(cmdLine.hasOption("reheader")){
+            vcfHeader = cmdLine.getOptionValue("reheader");
+        }
+
 //        outputFormat = cmdLine.getOptionValue("outputFormat", "VCF");
         reducerNum = Integer.parseInt(cmdLine.getOptionValue("reducerNum","30"));
         numSamples = Integer.parseInt(cmdLine.getOptionValue("numSamples","1000"));
@@ -84,5 +93,9 @@ public class SortVcfOptions extends Parameter {
 
     public int getNumSamples() {
         return numSamples;
+    }
+
+    public String getVcfHeader() {
+        return vcfHeader;
     }
 }

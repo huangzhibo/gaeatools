@@ -35,15 +35,13 @@ import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.*;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.partition.InputSampler;
 import org.apache.hadoop.mapreduce.lib.partition.TotalOrderPartitioner;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
-import org.seqdoop.hadoop_bam.KeyIgnoringVCFOutputFormat;
-import org.seqdoop.hadoop_bam.VCFInputFormat;
-import org.seqdoop.hadoop_bam.VCFOutputFormat;
-import org.seqdoop.hadoop_bam.VariantContextWritable;
+import org.seqdoop.hadoop_bam.*;
 import org.seqdoop.hadoop_bam.util.BGZFCodec;
 
 import java.io.FilterOutputStream;
@@ -96,21 +94,26 @@ public class SortVcf extends Configured implements Tool {
         conf.set(VCFOutputFormat.OUTPUT_VCF_FORMAT_PROPERTY, options.getOutputFormat());
         conf.setBoolean("hadoopbam.vcf.write-header",false);
 
+
         Path inputPath = new Path(options.getInput());
         FileSystem fs = inputPath.getFileSystem(conf);
         FileStatus[] files = fs.listStatus(inputPath);
+
+        Path vcfHeaderPath = files[0].getPath();
+        if(options.getVcfHeader() != null)
+            vcfHeaderPath = new Path(options.getVcfHeader());
 
         if(files.length <= 0){
             System.err.println("Input dir is empty!");
             return 1;
         }
 
-        conf.set(MyVCFOutputFormat.INPUT_PATH_PROP, files[0].getPath().toString());
+        conf.set(MyVCFOutputFormat.INPUT_PATH_PROP, vcfHeaderPath.toString());
         conf.set("io.compression.codecs", BGZFCodec.class.getCanonicalName());
 
         KeyIgnoringVCFOutputFormat<Text> baseOF = new KeyIgnoringVCFOutputFormat<>(conf);
 
-        baseOF.readHeaderFrom(files[0].getPath(), inputPath.getFileSystem(conf));
+        baseOF.readHeaderFrom(vcfHeaderPath, vcfHeaderPath.getFileSystem(conf));
         VCFHeader vcfHeader = baseOF.getHeader();
 
         Job job = Job.getInstance(conf, "SortVcf");
