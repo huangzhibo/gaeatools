@@ -34,14 +34,15 @@ import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.*;
-import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
-import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.partition.InputSampler;
 import org.apache.hadoop.mapreduce.lib.partition.TotalOrderPartitioner;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
-import org.seqdoop.hadoop_bam.*;
+import org.seqdoop.hadoop_bam.KeyIgnoringVCFOutputFormat;
+import org.seqdoop.hadoop_bam.VCFInputFormat;
+import org.seqdoop.hadoop_bam.VCFOutputFormat;
+import org.seqdoop.hadoop_bam.VariantContextWritable;
 import org.seqdoop.hadoop_bam.util.BGZFCodec;
 
 import java.io.FilterOutputStream;
@@ -107,7 +108,6 @@ public class SortVcf extends Configured implements Tool {
             System.err.println("Input dir is empty!");
             return 1;
         }
-
         conf.set(MyVCFOutputFormat.INPUT_PATH_PROP, vcfHeaderPath.toString());
         conf.set("io.compression.codecs", BGZFCodec.class.getCanonicalName());
 
@@ -134,26 +134,35 @@ public class SortVcf extends Configured implements Tool {
         SimpleDateFormat df = new SimpleDateFormat("yyyyMMddHHmmss");
         String tmpDir = "/user/" + System.getProperty("user.name") + "/vcfsorttmp-" + df.format(new Date());
         Path partTmp = new Path(tmpDir+"/temp");
-        FileInputFormat.addInputPath(job, inputPath);
+        VCFInputFormat.addInputPath(job, inputPath);
+        VCFInputFormat.setMaxInputSplitSize(job, 64*1024*1024L);
         FileOutputFormat.setOutputPath(job, partTmp);
         FileOutputFormat.setCompressOutput(job, true);
         FileOutputFormat.setOutputCompressorClass(job, BGZFCodec.class);
 
-        Path partitionFile = new Path(tmpDir+"/_partitons.lst");
-        TotalOrderPartitioner.setPartitionFile(job.getConfiguration(), partitionFile);
-
-        System.out.println("vcf-sort :: Sampling...");
         int reducerNum = options.getReducerNum();
-        int numSamples = options.getNumSamples();
-        if(fs.getContentSummary(inputPath).getLength() < 3000000) {
-            reducerNum = 1;
-            numSamples = 1;
+        Path partitionFile;
+        if(options.getPartitionFileString() == null) {
+            partitionFile = new Path(tmpDir + "/_partitons.lst");
+            TotalOrderPartitioner.setPartitionFile(job.getConfiguration(), partitionFile);
+
+            System.out.println("vcf-sort :: Sampling...");
+            int numSamples = options.getNumSamples();
+            if (fs.getContentSummary(inputPath).getLength() < 3000000) {
+                reducerNum = 1;
+                numSamples = 1;
+            }
+            InputSampler.writePartitionFile(
+                    job,
+                    new InputSampler.RandomSampler<LongWritable, VariantContextWritable>
+                            (0.01, numSamples, reducerNum));
+
+        }else {
+            System.out.println("vcf-sort :: use partitionFile:"+options.getPartitionFileString() + " ...");
+            partitionFile = new Path(options.getPartitionFileString());
+            TotalOrderPartitioner.setPartitionFile(job.getConfiguration(), partitionFile);
         }
         job.setNumReduceTasks(reducerNum);
-        InputSampler.writePartitionFile(
-                job,
-                new InputSampler.RandomSampler<LongWritable, VariantContextWritable>
-                        (0.01, numSamples, reducerNum));
 
         if (!job.waitForCompletion(true)) {
             System.err.println("sort :: Job failed.");

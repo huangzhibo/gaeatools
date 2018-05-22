@@ -15,6 +15,7 @@ public class SortVcfOptions extends Parameter {
 //    private String outputFormat = "VCF";
     private int reducerNum;
     private int numSamples;
+    private String partitionFileString;
 
     SortVcfOptions(String[] args) {
         super("SortVcf",args);
@@ -49,6 +50,9 @@ public class SortVcfOptions extends Parameter {
         option.setArgName("INT");
         options.addOption(option);
 
+        option = new Option("p", "partitonFile", true, "the partiton file (_partitons.lst) [null]");
+        options.addOption(option);
+
         option = new Option("h", "help", false, "Print this help.");
         options.addOption(option);
 
@@ -69,8 +73,11 @@ public class SortVcfOptions extends Parameter {
             vcfHeader = cmdLine.getOptionValue("reheader");
         }
 
+        if(cmdLine.hasOption("partitonFile"))
+            partitionFileString = cmdLine.getOptionValue("partitonFile");;
+
 //        outputFormat = cmdLine.getOptionValue("outputFormat", "VCF");
-        reducerNum = Integer.parseInt(cmdLine.getOptionValue("reducerNum","30"));
+        reducerNum = Integer.parseInt(cmdLine.getOptionValue("reducerNum","50"));
         numSamples = Integer.parseInt(cmdLine.getOptionValue("numSamples","1000"));
     }
 
@@ -97,5 +104,9 @@ public class SortVcfOptions extends Parameter {
 
     public String getVcfHeader() {
         return vcfHeader;
+    }
+
+    public String getPartitionFileString() {
+        return partitionFileString;
     }
 }
