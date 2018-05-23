@@ -60,6 +60,8 @@ import java.util.Date;
  */
 public class SortVcf extends Configured implements Tool {
 
+    public static final long MAX_SPLIT_SIZE = 64*1024*1024L;
+
     static class MyVCFOutputFormat
             extends FileOutputFormat<Text, VariantContextWritable> {
         static final String INPUT_PATH_PROP = "vcf.input_path";
@@ -116,8 +118,7 @@ public class SortVcf extends Configured implements Tool {
         baseOF.readHeaderFrom(vcfHeaderPath, vcfHeaderPath.getFileSystem(conf));
         VCFHeader vcfHeader = baseOF.getHeader();
 
-        Job job = Job.getInstance(conf, "SortVcf");
-
+        Job job = Job.getInstance(conf, "VCFSort");
         job.setJarByClass(SortVcf.class);
 
         job.setMapperClass(Mapper.class);
@@ -136,7 +137,8 @@ public class SortVcf extends Configured implements Tool {
         String tmpDir = "/user/" + System.getProperty("user.name") + "/vcfsorttmp-" + df.format(new Date());
         Path partTmp = new Path(tmpDir+"/temp");
         VCFInputFormat.addInputPath(job, inputPath);
-        VCFInputFormat.setMaxInputSplitSize(job, 64*1024*1024L);
+        if(MAX_SPLIT_SIZE < VCFInputFormat.getMaxSplitSize(job) )
+            VCFInputFormat.setMaxInputSplitSize(job, MAX_SPLIT_SIZE);
         FileOutputFormat.setOutputPath(job, partTmp);
         FileOutputFormat.setCompressOutput(job, true);
         FileOutputFormat.setOutputCompressorClass(job, BGZFCodec.class);
