@@ -42,7 +42,7 @@ public class SortVcfOptions extends Parameter {
 //        option.setArgName("STRING");
 //        options.addOption(option);
 
-        option = new Option("R", "reducerNum", true, "hadoop reducer task num [30]");
+        option = new Option("R", "reducerNum", true, "hadoop reducer task num [50]");
         option.setArgName("INT");
         options.addOption(option);
 
