@@ -130,6 +130,7 @@ public class SortVcf extends Configured implements Tool {
         job.setInputFormatClass(VCFInputFormat.class);
         job.setOutputFormatClass(MyVCFOutputFormat.class);
         job.setPartitionerClass(TotalOrderPartitioner.class);
+        job.setNumReduceTasks(options.getReducerNum());
 
         SimpleDateFormat df = new SimpleDateFormat("yyyyMMddHHmmss");
         String tmpDir = "/user/" + System.getProperty("user.name") + "/vcfsorttmp-" + df.format(new Date());
@@ -140,29 +141,27 @@ public class SortVcf extends Configured implements Tool {
         FileOutputFormat.setCompressOutput(job, true);
         FileOutputFormat.setOutputCompressorClass(job, BGZFCodec.class);
 
-        int reducerNum = options.getReducerNum();
         Path partitionFile;
         if(options.getPartitionFileString() == null) {
             partitionFile = new Path(tmpDir + "/_partitons.lst");
             TotalOrderPartitioner.setPartitionFile(job.getConfiguration(), partitionFile);
-
             System.out.println("vcf-sort :: Sampling...");
             int numSamples = options.getNumSamples();
             if (fs.getContentSummary(inputPath).getLength() < 3000000) {
-                reducerNum = 1;
                 numSamples = 1;
+                job.setNumReduceTasks(1);
             }
             InputSampler.writePartitionFile(
                     job,
                     new InputSampler.RandomSampler<LongWritable, VariantContextWritable>
-                            (0.01, numSamples, reducerNum));
+                            (0.001, numSamples, numSamples));
 
         }else {
             System.out.println("vcf-sort :: use partitionFile:"+options.getPartitionFileString() + " ...");
             partitionFile = new Path(options.getPartitionFileString());
             TotalOrderPartitioner.setPartitionFile(job.getConfiguration(), partitionFile);
         }
-        job.setNumReduceTasks(reducerNum);
+
 
         if (!job.waitForCompletion(true)) {
             System.err.println("sort :: Job failed.");
