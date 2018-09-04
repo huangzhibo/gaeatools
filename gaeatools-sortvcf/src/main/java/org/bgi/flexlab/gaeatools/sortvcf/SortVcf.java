@@ -149,7 +149,7 @@ public class SortVcf extends Configured implements Tool {
             TotalOrderPartitioner.setPartitionFile(job.getConfiguration(), partitionFile);
             System.out.println("vcf-sort :: Sampling...");
             int numSamples = options.getNumSamples();
-            if (fs.getContentSummary(inputPath).getLength() < 3000000) {
+            if (fs.getContentSummary(inputPath).getLength() < 10000000) {
                 numSamples = 1;
                 job.setNumReduceTasks(1);
             }

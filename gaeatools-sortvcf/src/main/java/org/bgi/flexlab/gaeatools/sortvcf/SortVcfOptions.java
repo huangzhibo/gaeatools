@@ -77,7 +77,7 @@ public class SortVcfOptions extends Parameter {
             partitionFileString = cmdLine.getOptionValue("partitonFile");;
 
 //        outputFormat = cmdLine.getOptionValue("outputFormat", "VCF");
-        reducerNum = Integer.parseInt(cmdLine.getOptionValue("reducerNum","50"));
+        reducerNum = Integer.parseInt(cmdLine.getOptionValue("reducerNum","40"));
         numSamples = Integer.parseInt(cmdLine.getOptionValue("numSamples","1000"));
     }
 
